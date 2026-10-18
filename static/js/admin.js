@@ -45,6 +45,19 @@ async function loadDashboard() {
     document.getElementById('statSlices').textContent = data.stats.validated_slices;
     document.getElementById('statRevenue').textContent = `${data.stats.validated_revenue.toFixed(2)} €`;
 
+    // Update notifications info
+    if (data.notifications) {
+      const emailInput = document.getElementById('notifyEmailInput');
+      const emailDisplay = document.getElementById('currentEmailDisplay');
+      if (emailInput && data.notifications.notify_email) {
+        emailInput.value = data.notifications.notify_email;
+      }
+      if (emailDisplay) {
+        emailDisplay.textContent = data.notifications.notify_email || 'Aucun pour l\'instant';
+        emailDisplay.style.color = data.notifications.notify_email ? '#10b981' : 'var(--text-muted)';
+      }
+    }
+
     // Show dashboard
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('dashboardSection').style.display = 'block';
@@ -195,6 +208,48 @@ async function saveColocScore(colocId) {
 
     showToast("Score mis à jour !", "success");
     loadDashboard();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function saveEmailNotification() {
+  const emailInput = document.getElementById('notifyEmailInput');
+  const emailVal = (emailInput ? emailInput.value : '').trim();
+
+  try {
+    const res = await fetch('/api/admin/settings/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: currentSecret,
+        notify_email: emailVal
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur lors de l'enregistrement");
+
+    showToast("Adresse email enregistrée avec succès !", "success");
+    loadDashboard();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function sendTestNotification() {
+  try {
+    const res = await fetch('/api/admin/settings/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: currentSecret,
+        ntfy_topic: "cheesecake-nepal-cs"
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur lors de l'envoi du test");
+
+    showToast("🔔 Alerte test envoyée sur ntfy.sh/cheesecake-nepal-cs !", "success");
   } catch (err) {
     showToast(err.message, "error");
   }
