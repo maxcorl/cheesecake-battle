@@ -1,6 +1,7 @@
 """
 Cheesecake Battle - FastAPI Application
 Semaine du Cheesecake & Grand Concours Colocations (Nintendo Switch + Mario Kart 8)
+Compatible SQLite (local) et PostgreSQL (Render Cloud)
 """
 import os
 import sqlite3
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "cheesecakes.db")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "NEPAL2026")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
 app = FastAPI(title="Semaine du Cheesecake Battle")
 
@@ -23,74 +25,168 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
+class Database:
+    @staticmethod
+    def get_conn():
+        if DATABASE_URL:
+            import psycopg2
+            url = DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql://", 1)
+            return psycopg2.connect(url)
+        else:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+    @staticmethod
+    def execute(conn, sql: str, params: tuple = (), return_id: bool = False):
+        if DATABASE_URL:
+            import psycopg2.extras
+            pg_sql = sql.replace("?", "%s")
+            if return_id:
+                pg_sql += " RETURNING id"
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(pg_sql, params)
+                if return_id:
+                    row = cur.fetchone()
+                    return row["id"] if row else None
+                return None
+        else:
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            if return_id:
+                return cur.lastrowid
+            return None
+
+    @staticmethod
+    def fetch_all(conn, sql: str, params: tuple = ()):
+        if DATABASE_URL:
+            import psycopg2.extras
+            pg_sql = sql.replace("?", "%s")
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(pg_sql, params)
+                return cur.fetchall()
+        else:
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            return cur.fetchall()
+
+    @staticmethod
+    def fetch_one(conn, sql: str, params: tuple = ()):
+        if DATABASE_URL:
+            import psycopg2.extras
+            pg_sql = sql.replace("?", "%s")
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(pg_sql, params)
+                return cur.fetchone()
+        else:
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            return cur.fetchone()
 
 
 def init_db():
-    os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS colocations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        score INTEGER DEFAULT 0,
-        address TEXT,
-        created_at TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS flavors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        slug TEXT UNIQUE NOT NULL,
-        description TEXT,
-        price REAL NOT NULL,
-        badge TEXT,
-        image_url TEXT,
-        available BOOLEAN DEFAULT 1
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        coloc_name TEXT NOT NULL,
-        buyer_name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        room_or_address TEXT,
-        items_json TEXT NOT NULL,
-        total_slices INTEGER NOT NULL,
-        total_price REAL NOT NULL,
-        payment_method TEXT DEFAULT 'Lydia',
-        status TEXT DEFAULT 'pending',
-        notes TEXT,
-        created_at TEXT
-    )
-    """)
-
-    # Configure flavors: Nature Spéculoos (2.50€) + Option Coulis (+0.30€ -> 2.80€)
-    # Dont 0,50€ de caution pour le pot (remboursé si ramené propre)
-    cursor.execute("DELETE FROM flavors")
-    initial_flavors = [
-        ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
-        ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
-    ]
-    cursor.executemany("""
-        INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, initial_flavors)
-
-    conn.commit()
-    conn.close()
+    conn = Database.get_conn()
+    try:
+        if DATABASE_URL:
+            import psycopg2.extras
+            with conn.cursor() as cur:
+                cur.execute("""
+                CREATE TABLE IF NOT EXISTS colocations (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    score INTEGER DEFAULT 0,
+                    address TEXT,
+                    created_at TEXT
+                );
+                CREATE TABLE IF NOT EXISTS flavors (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    slug VARCHAR(255) UNIQUE NOT NULL,
+                    description TEXT,
+                    price REAL NOT NULL,
+                    badge TEXT,
+                    image_url TEXT,
+                    available BOOLEAN DEFAULT TRUE
+                );
+                CREATE TABLE IF NOT EXISTS orders (
+                    id SERIAL PRIMARY KEY,
+                    coloc_name VARCHAR(255) NOT NULL,
+                    buyer_name VARCHAR(255) NOT NULL,
+                    phone TEXT NOT NULL,
+                    room_or_address TEXT,
+                    items_json TEXT NOT NULL,
+                    total_slices INTEGER NOT NULL,
+                    total_price REAL NOT NULL,
+                    payment_method VARCHAR(50) DEFAULT 'Lydia',
+                    status VARCHAR(50) DEFAULT 'pending',
+                    notes TEXT,
+                    created_at TEXT
+                );
+                """)
+                cur.execute("DELETE FROM flavors")
+                initial_flavors = [
+                    ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", True),
+                    ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", True),
+                ]
+                cur.executemany("""
+                    INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, initial_flavors)
+            conn.commit()
+        else:
+            os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+            cur = conn.cursor()
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS colocations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                score INTEGER DEFAULT 0,
+                address TEXT,
+                created_at TEXT
+            )
+            """)
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS flavors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                slug TEXT UNIQUE NOT NULL,
+                description TEXT,
+                price REAL NOT NULL,
+                badge TEXT,
+                image_url TEXT,
+                available BOOLEAN DEFAULT 1
+            )
+            """)
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                coloc_name TEXT NOT NULL,
+                buyer_name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                room_or_address TEXT,
+                items_json TEXT NOT NULL,
+                total_slices INTEGER NOT NULL,
+                total_price REAL NOT NULL,
+                payment_method TEXT DEFAULT 'Lydia',
+                status TEXT DEFAULT 'pending',
+                notes TEXT,
+                created_at TEXT
+            )
+            """)
+            cur.execute("DELETE FROM flavors")
+            initial_flavors = [
+                ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
+                ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
+            ]
+            cur.executemany("""
+                INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, initial_flavors)
+            conn.commit()
+    finally:
+        conn.close()
 
 
 init_db()
@@ -110,20 +206,14 @@ class OrderCreate(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM flavors WHERE available = 1")
-    flavors = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM colocations ORDER BY score DESC, name ASC")
-    colocations = cursor.fetchall()
-
-    cursor.execute("SELECT SUM(score) FROM colocations")
-    total_slices_sold = cursor.fetchone()[0] or 0
-
-    conn.close()
+    conn = Database.get_conn()
+    try:
+        flavors = Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE OR available = 1")
+        colocations = Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")
+        sum_row = Database.fetch_one(conn, "SELECT SUM(score) as total FROM colocations")
+        total_slices_sold = (sum_row["total"] if sum_row and sum_row["total"] else 0)
+    finally:
+        conn.close()
 
     return templates.TemplateResponse(
         request=request,
@@ -147,34 +237,32 @@ async def admin_page(request: Request):
 
 @app.get("/api/leaderboard")
 async def get_leaderboard():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, score, address FROM colocations ORDER BY score DESC, name ASC")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    conn = Database.get_conn()
+    try:
+        rows = Database.fetch_all(conn, "SELECT id, name, score, address FROM colocations ORDER BY score DESC, name ASC")
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
 
 
 @app.get("/api/colocations-names")
 async def get_colocation_names():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM colocations ORDER BY name ASC")
-    names = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return names
+    conn = Database.get_conn()
+    try:
+        rows = Database.fetch_all(conn, "SELECT name FROM colocations ORDER BY name ASC")
+        return [r["name"] for r in rows]
+    finally:
+        conn.close()
 
 
 @app.get("/api/flavors")
 async def get_flavors():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM flavors WHERE available = 1")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    conn = Database.get_conn()
+    try:
+        rows = Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE OR available = 1")
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
 
 
 @app.post("/api/orders")
@@ -185,64 +273,63 @@ async def create_order(order: OrderCreate):
     if not clean_coloc or not clean_location or not clean_time:
         raise HTTPException(status_code=400, detail="Veuillez remplir les 3 champs (Colocation, Lieu de livraison, Horaire).")
 
-    # Calculate total slices and total price based on flavors in DB
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    conn = Database.get_conn()
+    try:
+        flavor_rows = Database.fetch_all(conn, "SELECT name, price FROM flavors")
+        price_map = {row["name"]: row["price"] for row in flavor_rows}
 
-    cursor.execute("SELECT name, price FROM flavors")
-    price_map = {row["name"]: row["price"] for row in cursor.fetchall()}
+        total_slices = 0
+        total_price = 0.0
+        sanitized_items = {}
 
-    total_slices = 0
-    total_price = 0.0
-    sanitized_items = {}
+        for flavor_name, qty in order.items.items():
+            try:
+                qty_int = int(qty)
+            except ValueError:
+                continue
+            if qty_int > 0:
+                unit_price = price_map.get(flavor_name, 2.50)
+                sanitized_items[flavor_name] = qty_int
+                total_slices += qty_int
+                total_price += unit_price * qty_int
 
-    for flavor_name, qty in order.items.items():
-        try:
-            qty_int = int(qty)
-        except ValueError:
-            continue
-        if qty_int > 0:
-            unit_price = price_map.get(flavor_name, 2.50)
-            sanitized_items[flavor_name] = qty_int
-            total_slices += qty_int
-            total_price += unit_price * qty_int
+        if total_slices <= 0:
+            raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un pot de cheesecake.")
 
-    if total_slices <= 0:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        order_id = Database.execute(
+            conn,
+            """
+            INSERT INTO orders (
+                coloc_name, buyer_name, phone, room_or_address,
+                items_json, total_slices, total_price, payment_method,
+                status, notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            """,
+            (
+                clean_coloc,
+                clean_coloc,
+                "",
+                clean_location,
+                json.dumps(sanitized_items, ensure_ascii=False),
+                total_slices,
+                round(total_price, 2),
+                "",
+                clean_time,
+                now
+            ),
+            return_id=True
+        )
+
+        existing_coloc = Database.fetch_one(conn, "SELECT id FROM colocations WHERE LOWER(name) = LOWER(?)", (clean_coloc,))
+        if not existing_coloc:
+            Database.execute(conn, "INSERT INTO colocations (name, score, address, created_at) VALUES (?, 0, ?, ?)",
+                             (clean_coloc, clean_location, now))
+
+        conn.commit()
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins une part de cheesecake.")
-
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    cursor.execute("""
-        INSERT INTO orders (
-            coloc_name, buyer_name, phone, room_or_address,
-            items_json, total_slices, total_price, payment_method,
-            status, notes, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-    """, (
-        clean_coloc,
-        clean_coloc,
-        "",
-        clean_location,
-        json.dumps(sanitized_items, ensure_ascii=False),
-        total_slices,
-        round(total_price, 2),
-        "",
-        clean_time,
-        now
-    ))
-    order_id = cursor.lastrowid
-
-    # If the colocation does not exist yet in the colocations table, register it with score 0
-    cursor.execute("SELECT id FROM colocations WHERE LOWER(name) = LOWER(?)", (clean_coloc,))
-    existing_coloc = cursor.fetchone()
-    if not existing_coloc:
-        cursor.execute("INSERT INTO colocations (name, score, address, created_at) VALUES (?, 0, ?, ?)",
-                       (clean_coloc, clean_location, now))
-
-    conn.commit()
-    conn.close()
 
     return {
         "success": True,
@@ -256,26 +343,17 @@ async def admin_get_orders(secret: str):
     if secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Code secret administrateur invalide.")
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM orders ORDER BY id DESC")
-    orders = [dict(r) for r in cursor.fetchall()]
-
-    cursor.execute("SELECT * FROM colocations ORDER BY score DESC, name ASC")
-    colocs = [dict(r) for r in cursor.fetchall()]
-
-    cursor.execute("SELECT COUNT(*) FROM orders WHERE status = 'pending'")
-    pending_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT SUM(total_slices) FROM orders WHERE status = 'approved'")
-    total_validated_slices = cursor.fetchone()[0] or 0
-
-    # Compteur d'argent asso : 2,00 € par cheesecake validé
-    revenue = total_validated_slices * 2.0
-
-    conn.close()
+    conn = Database.get_conn()
+    try:
+        orders = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM orders ORDER BY id DESC")]
+        colocs = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")]
+        pending_row = Database.fetch_one(conn, "SELECT COUNT(*) as count FROM orders WHERE status = 'pending'")
+        pending_count = pending_row["count"] if pending_row else 0
+        slices_row = Database.fetch_one(conn, "SELECT SUM(total_slices) as sum_slices FROM orders WHERE status = 'approved'")
+        total_validated_slices = (slices_row["sum_slices"] or 0) if slices_row else 0
+        revenue = total_validated_slices * 2.0
+    finally:
+        conn.close()
 
     return {
         "orders": orders,
@@ -293,42 +371,34 @@ async def admin_validate_order(order_id: int, secret: str = Form(...)):
     if secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Code secret invalide.")
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    conn = Database.get_conn()
+    try:
+        order = Database.fetch_one(conn, "SELECT * FROM orders WHERE id = ?", (order_id,))
+        if not order:
+            raise HTTPException(status_code=404, detail="Commande introuvable.")
 
-    cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
-    order = cursor.fetchone()
-    if not order:
+        current_status = order["status"]
+        coloc_name = order["coloc_name"]
+        slices = order["total_slices"]
+
+        if current_status == "approved":
+            return {"success": True, "message": "Cette commande est déjà validée."}
+
+        Database.execute(conn, "UPDATE orders SET status = 'approved' WHERE id = ?", (order_id,))
+
+        coloc_row = Database.fetch_one(conn, "SELECT id, score FROM colocations WHERE LOWER(name) = LOWER(?)", (coloc_name,))
+        if coloc_row:
+            new_score = coloc_row["score"] + slices
+            Database.execute(conn, "UPDATE colocations SET score = ? WHERE id = ?", (new_score, coloc_row["id"]))
+        else:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            Database.execute(conn, "INSERT INTO colocations (name, score, address, created_at) VALUES (?, ?, ?, ?)",
+                             (coloc_name, slices, order["room_or_address"] or "", now))
+
+        conn.commit()
+        return {"success": True, "message": f"Commande #{order_id} validée ! +{slices} parts ajoutées à la coloc '{coloc_name}'."}
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail="Commande introuvable.")
-
-    current_status = order["status"]
-    coloc_name = order["coloc_name"]
-    slices = order["total_slices"]
-
-    if current_status == "approved":
-        conn.close()
-        return {"success": True, "message": "Cette commande est déjà validée."}
-
-    # Update order status
-    cursor.execute("UPDATE orders SET status = 'approved' WHERE id = ?", (order_id,))
-
-    # Update or insert coloc score
-    cursor.execute("SELECT id, score FROM colocations WHERE LOWER(name) = LOWER(?)", (coloc_name,))
-    coloc_row = cursor.fetchone()
-    if coloc_row:
-        new_score = coloc_row["score"] + slices
-        cursor.execute("UPDATE colocations SET score = ? WHERE id = ?", (new_score, coloc_row["id"]))
-    else:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("INSERT INTO colocations (name, score, address, created_at) VALUES (?, ?, ?, ?)",
-                       (coloc_name, slices, order["room_or_address"] or "", now))
-
-    conn.commit()
-    conn.close()
-
-    return {"success": True, "message": f"Commande #{order_id} validée ! +{slices} parts ajoutées à la coloc '{coloc_name}'."}
 
 
 @app.post("/api/admin/orders/{order_id}/reject")
@@ -336,29 +406,23 @@ async def admin_reject_order(order_id: int, secret: str = Form(...)):
     if secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Code secret invalide.")
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    conn = Database.get_conn()
+    try:
+        order = Database.fetch_one(conn, "SELECT * FROM orders WHERE id = ?", (order_id,))
+        if not order:
+            raise HTTPException(status_code=404, detail="Commande introuvable.")
 
-    cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
-    order = cursor.fetchone()
-    if not order:
+        if order["status"] == "approved":
+            coloc = Database.fetch_one(conn, "SELECT id, score FROM colocations WHERE LOWER(name) = LOWER(?)", (order["coloc_name"],))
+            if coloc:
+                new_score = max(0, coloc["score"] - order["total_slices"])
+                Database.execute(conn, "UPDATE colocations SET score = ? WHERE id = ?", (new_score, coloc["id"]))
+
+        Database.execute(conn, "UPDATE orders SET status = 'rejected' WHERE id = ?", (order_id,))
+        conn.commit()
+        return {"success": True, "message": f"Commande #{order_id} marquée comme refusée/annulée."}
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail="Commande introuvable.")
-
-    # If it was previously approved, decrement score
-    if order["status"] == "approved":
-        cursor.execute("SELECT id, score FROM colocations WHERE LOWER(name) = LOWER(?)", (order["coloc_name"],))
-        coloc = cursor.fetchone()
-        if coloc:
-            new_score = max(0, coloc["score"] - order["total_slices"])
-            cursor.execute("UPDATE colocations SET score = ? WHERE id = ?", (new_score, coloc["id"]))
-
-    cursor.execute("UPDATE orders SET status = 'rejected' WHERE id = ?", (order_id,))
-    conn.commit()
-    conn.close()
-
-    return {"success": True, "message": f"Commande #{order_id} marquée comme refusée/annulée."}
 
 
 @app.post("/api/admin/colocations/score")
@@ -366,13 +430,13 @@ async def admin_update_coloc_score(coloc_id: int = Form(...), new_score: int = F
     if secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Code secret invalide.")
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE colocations SET score = ? WHERE id = ?", (max(0, new_score), coloc_id))
-    conn.commit()
-    conn.close()
-
-    return {"success": True, "message": "Score mis à jour avec succès."}
+    conn = Database.get_conn()
+    try:
+        Database.execute(conn, "UPDATE colocations SET score = ? WHERE id = ?", (max(0, new_score), coloc_id))
+        conn.commit()
+        return {"success": True, "message": "Score mis à jour avec succès."}
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
