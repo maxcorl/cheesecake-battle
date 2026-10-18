@@ -95,7 +95,7 @@ function renderOrders() {
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Aucune commande dans cette catégorie.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Aucune commande dans cette catégorie.</td></tr>`;
     return;
   }
 
@@ -114,11 +114,16 @@ function renderOrders() {
     else if (o.status === 'approved') statusBadge = `<span class="status-badge status-approved">Validée</span>`;
     else statusBadge = `<span class="status-badge status-rejected">Refusée</span>`;
 
+    const phoneDisplay = o.phone
+      ? `<a href="tel:${o.phone}" style="color: var(--accent-gold); font-weight: 700; text-decoration: none;" title="Appeler le client">📞 ${o.phone}</a>`
+      : `<span style="color: var(--text-muted); font-size: 0.85rem;">Non renseigné</span>`;
+
     const isApproved = o.status === 'approved';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>#${o.id}</td>
       <td><strong style="font-size: 1.05rem; color: #fff;">${o.coloc_name}</strong></td>
+      <td>${phoneDisplay}</td>
       <td><strong>📍 ${o.room_or_address || 'Non précisé'}</strong></td>
       <td><span style="color: var(--accent-gold); font-weight: 700;">🕒 ${o.notes || 'Dès que possible'}</span></td>
       <td>${itemsSummary}</td>

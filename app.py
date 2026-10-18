@@ -272,8 +272,9 @@ async def create_order(order: OrderCreate):
     clean_coloc = order.coloc_name.strip()
     clean_location = order.delivery_location.strip()
     clean_time = order.delivery_time.strip()
-    if not clean_coloc or not clean_location or not clean_time:
-        raise HTTPException(status_code=400, detail="Veuillez remplir les 3 champs (Colocation, Lieu de livraison, Horaire).")
+    clean_phone = (order.phone or "").strip()
+    if not clean_coloc or not clean_location or not clean_time or not clean_phone:
+        raise HTTPException(status_code=400, detail="Veuillez remplir tous les champs (Colocation, Téléphone, Lieu de livraison, Horaire).")
 
     conn = Database.get_conn()
     try:
@@ -312,7 +313,7 @@ async def create_order(order: OrderCreate):
             (
                 clean_coloc,
                 clean_coloc,
-                "",
+                clean_phone,
                 clean_location,
                 json.dumps(sanitized_items, ensure_ascii=False),
                 total_slices,

@@ -115,11 +115,12 @@ function initForm() {
     e.preventDefault();
 
     const coloc_name = document.getElementById('colocNameInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
     const delivery_location = document.getElementById('locationInput').value.trim();
     const delivery_time = document.getElementById('timeInput').value.trim();
 
-    if (!coloc_name || !delivery_location || !delivery_time) {
-      showToast("Veuillez renseigner le nom de la coloc, le lieu et l'horaire de livraison.", "error");
+    if (!coloc_name || !phone || !delivery_location || !delivery_time) {
+      showToast("Veuillez renseigner le nom de la coloc, votre téléphone, le lieu et l'horaire de livraison.", "error");
       return;
     }
 
@@ -133,6 +134,7 @@ function initForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coloc_name,
+          phone,
           delivery_location,
           delivery_time,
           items: cart
