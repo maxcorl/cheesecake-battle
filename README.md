@@ -21,7 +21,7 @@ Le projet dispose déjà de son environnement virtuel `venv` préconfiguré.
 
 ```bash
 # 1. Aller dans le dossier
-cd ~/Desktop/Code/cheesecake-battle
+cd /Users/corlouermax/.gemini/antigravity-ide/scratch/cheesecake-battle
 
 # 2. Activer le venv
 source venv/bin/activate
@@ -32,7 +32,7 @@ uvicorn app:app --reload --port 8000
 
 Accédez ensuite à :
 - **Site public** : `http://localhost:8000`
-- **Espace Admin** : `http://localhost:8000/admin` (Code secret : `cheesecake2026`)
+- **Espace Admin** : `http://localhost:8000/admin` (Code secret : `NEPAL2026`)
 
 ---
 
@@ -57,5 +57,5 @@ Si tu souhaites une URL stricte `https://ton-asso.github.io/...` sans aucun héb
 
 ## 🔑 Configuration Admin
 - **URL** : `/admin`
-- **Mot de passe par défaut** : `cheesecake2026`
+- **Mot de passe par défaut** : `NEPAL2026`
 - Peut être personnalisé via la variable d'environnement `ADMIN_SECRET`.

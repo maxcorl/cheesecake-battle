@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "cheesecakes.db")
-ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "cheesecake2026")
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "NEPAL2026")
 
 app = FastAPI(title="Semaine du Cheesecake Battle")
 
