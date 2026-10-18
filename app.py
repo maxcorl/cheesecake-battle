@@ -208,10 +208,10 @@ class OrderCreate(BaseModel):
 async def home(request: Request):
     conn = Database.get_conn()
     try:
-        flavors = Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE OR available = 1")
-        colocations = Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")
-        sum_row = Database.fetch_one(conn, "SELECT SUM(score) as total FROM colocations")
-        total_slices_sold = (sum_row["total"] if sum_row and sum_row["total"] else 0)
+        flavors = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE")]
+        colocations = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")]
+        sum_row = Database.fetch_one(conn, "SELECT COALESCE(SUM(score), 0) as total FROM colocations")
+        total_slices_sold = int(sum_row["total"]) if sum_row and sum_row["total"] else 0
     finally:
         conn.close()
 
@@ -259,7 +259,7 @@ async def get_colocation_names():
 async def get_flavors():
     conn = Database.get_conn()
     try:
-        rows = Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE OR available = 1")
+        rows = Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE")
         return [dict(r) for r in rows]
     finally:
         conn.close()
@@ -348,9 +348,9 @@ async def admin_get_orders(secret: str):
         orders = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM orders ORDER BY id DESC")]
         colocs = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")]
         pending_row = Database.fetch_one(conn, "SELECT COUNT(*) as count FROM orders WHERE status = 'pending'")
-        pending_count = pending_row["count"] if pending_row else 0
-        slices_row = Database.fetch_one(conn, "SELECT SUM(total_slices) as sum_slices FROM orders WHERE status = 'approved'")
-        total_validated_slices = (slices_row["sum_slices"] or 0) if slices_row else 0
+        pending_count = int(pending_row["count"]) if pending_row and pending_row["count"] else 0
+        slices_row = Database.fetch_one(conn, "SELECT COALESCE(SUM(total_slices), 0) as sum_slices FROM orders WHERE status = 'approved'")
+        total_validated_slices = int(slices_row["sum_slices"]) if slices_row and slices_row["sum_slices"] else 0
         revenue = total_validated_slices * 2.0
     finally:
         conn.close()
