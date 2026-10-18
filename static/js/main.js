@@ -186,7 +186,9 @@ function renderLeaderboard(colocs) {
   const container = document.getElementById('leaderboardRows');
   if (!container) return;
 
-  if (!colocs || colocs.length === 0) {
+  const validColocs = (colocs || []).filter(c => Number(c.score) > 0);
+
+  if (validColocs.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-md); border: 1px dashed var(--border-glass);">
         <div style="font-size: 2.2rem; margin-bottom: 8px;">🏁</div>
@@ -199,7 +201,7 @@ function renderLeaderboard(colocs) {
 
   // Render rows from 4th onwards (or full list)
   let html = '';
-  colocs.forEach((coloc, index) => {
+  validColocs.forEach((coloc, index) => {
     const rank = index + 1;
     let rankEmoji = `#${rank}`;
     if (rank === 1) rankEmoji = '🥇 1er';

@@ -211,7 +211,7 @@ async def home(request: Request):
     conn = Database.get_conn()
     try:
         flavors = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM flavors WHERE available = TRUE")]
-        colocations = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM colocations ORDER BY score DESC, name ASC")]
+        colocations = [dict(r) for r in Database.fetch_all(conn, "SELECT * FROM colocations WHERE score > 0 ORDER BY score DESC, name ASC")]
         sum_row = Database.fetch_one(conn, "SELECT COALESCE(SUM(score), 0) as total FROM colocations")
         total_slices_sold = int(sum_row["total"]) if sum_row and sum_row["total"] else 0
     finally:
@@ -241,7 +241,7 @@ async def admin_page(request: Request):
 async def get_leaderboard():
     conn = Database.get_conn()
     try:
-        rows = Database.fetch_all(conn, "SELECT id, name, score, address FROM colocations ORDER BY score DESC, name ASC")
+        rows = Database.fetch_all(conn, "SELECT id, name, score, address FROM colocations WHERE score > 0 ORDER BY score DESC, name ASC")
         return [dict(r) for r in rows]
     finally:
         conn.close()
