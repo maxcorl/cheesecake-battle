@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Asso | Validation des Commandes Cheesecake Battle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/images/logo_nepalasa.png">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .admin-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .stat-box-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .stat-box-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+    }
+    .filter-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: var(--radius-full);
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: var(--accent-gold);
+      color: var(--text-dark);
+      border-color: var(--accent-gold);
+    }
+    .btn-action {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+    .btn-validate {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-validate:hover {
+      background: #059669;
+    }
+    .btn-reject {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+    }
+    .btn-reject:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+    .action-group {
+      display: flex;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container nav-content">
+      <div class="brand-logo" style="display: flex; align-items: center; gap: 12px;">
+        <img src="/static/images/logo_nepalasa.png" alt="Logo Népal Asa" style="height: 42px; width: 42px; object-fit: contain;">
+        <span>Népal Asa • Validation Asso</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="btn btn-outline" style="font-size: 0.85rem;">← Retour au site vitrine</a>
+        <button id="logoutBtn" class="btn btn-admin" onclick="logoutAdmin()">Déconnexion</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top: 40px; padding-bottom: 60px;">
+
+    <!-- Password Prompt -->
+    <div id="authSection" class="leaderboard-container" style="max-width: 440px; margin: 40px auto; text-align: center;">
+      <h2 style="margin-bottom: 12px;">Accès Réservé Asso</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Entrez le mot de passe secret de l'asso pour valider les commandes et gérer le classement.</p>
+      <form id="authForm">
+        <div class="form-group">
+          <input type="password" id="secretInput" class="form-control" placeholder="Code secret (défaut: cheesecake2026)" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Se connecter 🔓</button>
+      </form>
+    </div>
+
+    <!-- Dashboard Content (Hidden until authenticated) -->
+    <div id="dashboardSection" style="display: none;">
+      
+      <!-- Key Stats -->
+      <div class="admin-stats-grid">
+        <div class="stat-box">
+          <div class="stat-box-title">Commandes en attente</div>
+          <div class="stat-box-num" id="statPending">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-title">Total Parts Validées</div>
+          <div class="stat-box-num" id="statSlices">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-title">Chiffre d'Affaires Encaissé</div>
+          <div class="stat-box-num" id="statRevenue">0.00 €</div>
+        </div>
+      </div>
+
+      <!-- Section Title & Tabs -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <h2>Gestion des Commandes</h2>
+        <div class="filter-tabs">
+          <button class="tab-btn active" data-filter="pending" onclick="setFilter('pending')">⏳ En attente</button>
+          <button class="tab-btn" data-filter="approved" onclick="setFilter('approved')">✅ Validées</button>
+          <button class="tab-btn" data-filter="all" onclick="setFilter('all')">Toutes</button>
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <div class="leaderboard-container" style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Colocation</th>
+              <th>Lieu de livraison</th>
+              <th>Horaire souhaité</th>
+              <th>Détail Commande</th>
+              <th>Total</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Manual Colocation Score Adjustment -->
+      <div class="leaderboard-container" style="margin-top: 40px;">
+        <h3 style="margin-bottom: 16px;">Ajustement Manuel des Scores de Coloc</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+          Si une colocation a payé directement sur le stand ou si vous devez corriger manuellement un score.
+        </p>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Colocation</th>
+                <th>Score Actuel</th>
+                <th>Modifier le score</th>
+              </tr>
+            </thead>
+            <tbody id="colocsTableBody">
+              <!-- Dynamic rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Message</div>
+
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

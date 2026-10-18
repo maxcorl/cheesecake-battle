@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semaine du Cheesecake | Concours Colocations x Mario Kart</title>
+  <meta name="description" content="Commandez vos délicieux cheesecakes Nature Spéculoos faits maison par l'asso à 2,50€ (+0,30€ coulis). La coloc qui en prend le plus gagne la Nintendo Switch OLED !">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/static/images/logo_nepalasa.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* Single page showcase styling */
+    .single-order-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 32px;
+      align-items: center;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 48px;
+    }
+
+    .recipe-highlight-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.85));
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+    }
+
+    .recipe-badge-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 4px 12px rgba(255, 184, 0, 0.35));
+    }
+
+    .recipe-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .recipe-tag-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-glass);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      color: var(--accent-gold);
+    }
+
+    .product-choice-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      transition: var(--transition);
+    }
+
+    .product-choice-row:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .choice-info-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin-bottom: 2px;
+    }
+
+    .choice-info-price {
+      font-weight: 800;
+      color: var(--accent-gold);
+      font-size: 1.15rem;
+    }
+
+    .choice-badge-coulis {
+      background: rgba(225, 29, 72, 0.2);
+      border: 1px solid rgba(225, 29, 72, 0.4);
+      color: #fb7185;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      margin-left: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .single-order-card {
+        grid-template-columns: 1fr;
+      }
+      .single-product-img {
+        height: 220px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Clean Top Bar with Népal Asa Logo -->
+  <nav class="navbar">
+    <div class="container nav-content">
+      <div class="brand-logo" style="display: flex; align-items: center; gap: 14px;">
+        <img src="/static/images/logo_nepalasa.png" alt="Logo Népal Asa" style="height: 48px; width: 48px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));">
+        <div style="display: flex; flex-direction: column;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px;">Népal Asa</span>
+            <span class="brand-badge">Cheesecake Battle</span>
+          </span>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Semaine du Cheesecake x Mario Kart</span>
+        </div>
+      </div>
+      <div style="font-size: 0.9rem; color: var(--accent-gold); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+        <span>🎮</span>
+        <span>Lot : Switch OLED + Mario Kart</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero & Concours Presentation -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-text-content">
+          <div class="hero-tag">
+            <span class="hero-tag-pulse"></span>
+            Semaine du Cheesecake • Népal Asa
+          </div>
+          <h1 class="hero-title">
+            Mangez du <span class="hero-gradient-text">Cheesecake</span>.<br>
+            Gagnez la <span class="hero-mario-text">Switch</span>.
+          </h1>
+          <p class="hero-desc">
+            Commandez vos parts de cheesecake <strong>Nature Spéculoos</strong> faites maison par <strong>Népal Asa</strong>. 
+            Chaque part achetée rapporte <strong>1 point</strong> au classement de votre colocation. 
+            La coloc en tête dimanche remporte la <strong>Nintendo Switch OLED + Mario Kart 8 Deluxe offerts par la JCS</strong> !
+          </p>
+
+          <!-- Cause solidaire UDMF Katmandou & Stand -->
+          <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(129, 140, 248, 0.35); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: #a5b4fc; font-size: 0.95rem; margin-bottom: 4px;">
+              <span>🤝</span>
+              <span>Action 100% Solidaire</span>
+            </div>
+            <div style="font-size: 0.88rem; color: #e2e8f0; line-height: 1.5;">
+              Tous les bénéfices sont <strong>entièrement reversés au centre éducatif UDMF à Katmandou</strong> soutenu par Népal Asa.
+            </div>
+            <div style="margin-top: 8px; font-size: 0.82rem; color: var(--accent-gold); font-weight: 700;">
+              📍 Stand : <strong>2BG0G</strong> • Semaine du 19 octobre
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <a href="#commander" class="btn btn-primary" style="padding: 14px 28px; font-size: 1.05rem;">
+              Commander mes parts 🍰
+            </a>
+            <a href="#classement" class="btn btn-outline" style="padding: 14px 24px;">
+              Voir le classement en direct 🏆
+            </a>
+          </div>
+
+          <div class="hero-stats">
+            <div class="hero-stat-item">
+              <span class="stat-value" id="globalSliceCount">{{ total_slices_sold }}</span>
+              <span class="stat-label">Parts validées</span>
+            </div>
+            <div class="hero-stat-item">
+              <span class="stat-value">{{ colocations|length }}</span>
+              <span class="stat-label">Colocs en lice</span>
+            </div>
+            <div class="hero-stat-item">
+              <span class="stat-value">2,50 €</span>
+              <span class="stat-label">La part maison (+0,30€ coulis)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grand Prize Card -->
+        <div class="prize-card">
+          <div class="prize-badge">🎮 Grand Prix Coloc</div>
+          <div class="prize-image-wrap">
+            <img src="/static/images/switch_prize.jpg" alt="Nintendo Switch OLED et trophée Mario Kart">
+          </div>
+          <div class="prize-info">
+            <h3 class="prize-title">Nintendo Switch OLED + Mario Kart 8</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px; background: rgba(255, 255, 255, 0.95); padding: 8px 16px; border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+              <span style="font-size: 0.8rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Offerts par</span>
+              <img src="/static/images/logo_jcs.png" alt="Logo Junior CentraleSupélec (JCS)" style="height: 32px; width: auto; object-fit: contain;">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- The Single Cheesecake Product & Order Area -->
+  <section class="section" id="commander" style="padding-top: 20px;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Fait maison avec amour par l'Asso</span>
+        <h2 class="section-title">Le Cheesecake Nature Spéculoos</h2>
+      </div>
+
+      <div class="single-order-card">
+        <!-- Recipe Highlight Info (No cheesecake photo) -->
+        <div class="recipe-highlight-card">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <img src="/static/images/logo_nepalasa.png" alt="Logo Népal Asa" style="height: 40px; width: 40px; object-fit: contain;">
+            <h3 style="font-size: 1.35rem; font-weight: 800; margin: 0;">Recette Spéciale Népal Asa</h3>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px;">
+            Préparé maison avec amour pour la semaine spéciale : appareil frais et crémeux au cream cheese, croûte sablée pur Spéculoos croustillant, et option coulis fruité fait maison.
+          </p>
+          <div class="recipe-tags">
+            <span class="recipe-tag-pill">🇳🇵 Népal Asa</span>
+            <span class="recipe-tag-pill">✨ 100% Fait Maison</span>
+            <span class="recipe-tag-pill">🍪 Pur Spéculoos</span>
+            <span class="recipe-tag-pill">🍓 Option Coulis (+0,30€)</span>
+            <span class="recipe-tag-pill">🏁 1 part = 1 point Coloc</span>
+          </div>
+        </div>
+
+        <!-- Order Options Selection -->
+        <div>
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 6px;">Composez votre commande</h3>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+              Sélectionnez vos parts ci-dessous. <strong>1 part = 1 point</strong> pour faire grimper votre colocation !
+            </p>
+          </div>
+
+          <!-- Option 1 : Nature Spéculoos 2.50€ -->
+          <div class="product-choice-row flavor-card" data-name="Part Nature Spéculoos" data-price="2.50">
+            <div>
+              <div class="choice-info-title">Part Nature Spéculoos</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Base Spéculoos & crème onctueuse fondante</div>
+              <div class="choice-info-price">2,50 € <small style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">/ part</small></div>
+            </div>
+            <div class="qty-control">
+              <button type="button" class="qty-btn qty-minus" aria-label="Moins">-</button>
+              <span class="qty-val">0</span>
+              <button type="button" class="qty-btn qty-plus" aria-label="Plus">+</button>
+            </div>
+          </div>
+
+          <!-- Option 2 : Nature Spéculoos + Coulis 2.80€ -->
+          <div class="product-choice-row flavor-card" data-name="Part Nature Spéculoos + Option Coulis" data-price="2.80">
+            <div>
+              <div class="choice-info-title">
+                Part Nature Spéculoos + Coulis
+                <span class="choice-badge-coulis">+0,30 € coulis</span>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Nappée d'un généreux coulis fruité fait maison</div>
+              <div class="choice-info-price">2,80 € <small style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">/ part</small></div>
+            </div>
+            <div class="qty-control">
+              <button type="button" class="qty-btn qty-minus" aria-label="Moins">-</button>
+              <span class="qty-val">0</span>
+              <button type="button" class="qty-btn qty-plus" aria-label="Plus">+</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <button type="button" class="btn btn-primary" onclick="openOrderModal()" style="width: 100%; padding: 14px; font-size: 1.05rem;">
+              Valider la commande pour ma Coloc 🚀
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Colocations Leaderboard -->
+  <section class="section" id="classement">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Grand Concours Mario Kart</span>
+        <h2 class="section-title">Le Classement en Direct 🏆</h2>
+        <p class="section-desc">Mise à jour en temps réel dès validation par l'équipe de l'asso.</p>
+      </div>
+
+      <div class="leaderboard-container">
+        <!-- Top 3 Podium -->
+        {% if colocations|length >= 3 %}
+        <div class="podium-grid">
+          <!-- 2nd place -->
+          <div class="podium-card second">
+            <div class="podium-rank-badge">🥈</div>
+            <div class="podium-name">{{ colocations[1].name }}</div>
+            <div class="podium-slices">{{ colocations[1].score }} <span>parts</span></div>
+          </div>
+          <!-- 1st place -->
+          <div class="podium-card first">
+            <div class="podium-rank-badge">👑</div>
+            <div class="podium-name">{{ colocations[0].name }}</div>
+            <div class="podium-slices">{{ colocations[0].score }} <span>parts</span></div>
+            <span style="font-size: 0.75rem; color: var(--accent-gold); font-weight: 800; margin-top: 4px;">EN TÊTE DE COURSE 🏁</span>
+          </div>
+          <!-- 3rd place -->
+          <div class="podium-card third">
+            <div class="podium-rank-badge">🥉</div>
+            <div class="podium-name">{{ colocations[2].name }}</div>
+            <div class="podium-slices">{{ colocations[2].score }} <span>parts</span></div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Filter / Search -->
+        <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <input type="text" id="searchColoc" class="form-control" placeholder="🔍 Rechercher votre colocation..." style="max-width: 320px;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">1 part validée = 1 point</span>
+        </div>
+
+        <!-- Leaderboard Rows -->
+        <div class="coloc-list" id="leaderboardRows">
+          {% for coloc in colocations %}
+          <div class="coloc-row">
+            <div class="coloc-left">
+              <span class="coloc-rank">
+                {% if loop.index == 1 %}🥇 1er
+                {% elif loop.index == 2 %}🥈 2e
+                {% elif loop.index == 3 %}🥉 3e
+                {% else %}#{{ loop.index }}
+                {% endif %}
+              </span>
+              <div>
+                <div class="coloc-info-name">{{ coloc.name }}</div>
+                {% if coloc.address %}
+                <div class="coloc-info-address">{{ coloc.address }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="coloc-right">
+              <div class="coloc-score-pill">🍰 {{ coloc.score }} part{{ 's' if coloc.score > 1 else '' }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-md); border: 1px dashed var(--border-glass);">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🏁</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 6px;">La course n'a pas encore commencé !</div>
+            <div style="font-size: 0.9rem;">Commandez vos parts pour inscrire votre colocation au sommet du classement.</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Cart Bar -->
+  <div class="floating-bar" id="floatingBar">
+    <div class="bar-summary">
+      <span class="bar-badge" id="barCount">0 part</span>
+      <span class="bar-total" id="barTotal">0.00 €</span>
+    </div>
+    <button type="button" class="btn btn-primary" onclick="openOrderModal()">
+      Finaliser ma commande 🚀
+    </button>
+  </div>
+
+  <!-- Order Modal Form -->
+  <div class="modal-overlay" id="orderModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Valider ma commande 🍰</h3>
+        <button type="button" class="modal-close" onclick="closeOrderModal()">&times;</button>
+      </div>
+
+      <div class="order-recap" id="recapItems">
+        <!-- Injected via JS -->
+      </div>
+
+      <form id="orderForm">
+        <div class="form-group">
+          <label class="form-label" for="colocNameInput">Nom de votre Colocation *</label>
+          <input type="text" id="colocNameInput" list="colocsList" class="form-control" placeholder="Ex: Les Karting Kings / Coloc du 4B" required>
+          <datalist id="colocsList">
+            {% for coloc in colocations %}
+            <option value="{{ coloc.name }}">
+            {% endfor %}
+          </datalist>
+          <div class="form-help">Tapez le nom de votre coloc ou créez-en un nouveau pour le classement !</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="locationInput">Lieu de livraison *</label>
+          <input type="text" id="locationInput" class="form-control" placeholder="Ex: Résidence A, Appt 204 / Bâtiment B..." required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="timeInput">Horaire de livraison souhaité *</label>
+          <input type="text" id="timeInput" class="form-control" placeholder="Ex: 18h30 / Mercredi soir / Dès que possible..." required>
+        </div>
+
+        <button type="submit" id="submitOrderBtn" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 10px;">
+          Confirmer la commande 🏁
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">Message</div>
+
+  <!-- Clean Footer with Népal Asa & JCS partners -->
+  <footer class="footer">
+    <div class="container footer-content">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="/static/images/logo_nepalasa.png" alt="Logo Népal Asa" style="height: 38px; width: 38px; object-fit: contain;">
+          <span style="font-weight: 700; color: #fff; font-size: 1.05rem;">Népal Asa</span>
+        </div>
+        <span style="color: var(--text-muted); font-size: 1.1rem;">✖</span>
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.95); padding: 4px 14px; border-radius: var(--radius-full);">
+          <img src="/static/images/logo_jcs.png" alt="Logo Junior CentraleSupélec" style="height: 24px; width: auto; object-fit: contain;">
+        </div>
+      </div>
+      <p>🍰 Semaine du Cheesecake organisée par l'association <strong><a href="https://nepalasa.fr" target="_blank" rel="noopener noreferrer" style="color: var(--accent-gold); text-decoration: none; border-bottom: 1px dashed var(--accent-gold);">Népal Asa</a></strong> en partenariat avec <strong>Junior CentraleSupélec (JCS)</strong>.</p>
+      <p style="font-size: 0.85rem; color: #94a3b8; max-width: 600px; margin: 4px auto;">
+        Tous les bénéfices de la vente sont entièrement reversés au centre éducatif UDMF à Katmandou (Népal).
+      </p>
+      <p style="font-size: 0.75rem; color: #64748b; margin-top: 6px;">Nintendo Switch & Mario Kart sont des marques déposées de Nintendo.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/static/js/main.js"></script>
+</body>
+</html>
