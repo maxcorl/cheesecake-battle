@@ -77,12 +77,12 @@ def init_db():
     )
     """)
 
-    # Configure flavors: Nature Spéculoos (3.50€) + Option Coulis (+0.30€ -> 3.80€)
+    # Configure flavors: Nature Spéculoos (2.50€) + Option Coulis (+0.30€ -> 2.80€)
     # Dont 0,50€ de caution pour le pot (remboursé si ramené propre)
     cursor.execute("DELETE FROM flavors")
     initial_flavors = [
-        ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 3,50 € dont 0,50 € de caution pot remboursable.", 3.50, "Pot Classique • 3,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
-        ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 3,80 € dont 0,50 € de caution pot remboursable.", 3.80, "Option Coulis • 3,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
+        ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
+        ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
     ]
     cursor.executemany("""
         INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
