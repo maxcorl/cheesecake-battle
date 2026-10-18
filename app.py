@@ -134,6 +134,8 @@ def init_db():
                     INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, initial_flavors)
+                # Cleanup duplicate order 10 if present
+                cur.execute("DELETE FROM orders WHERE id = 10 AND coloc_name = '4B508'")
             conn.commit()
         else:
             os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
@@ -437,6 +439,57 @@ async def admin_update_coloc_score(coloc_id: int = Form(...), new_score: int = F
         return {"success": True, "message": "Score mis à jour avec succès."}
     finally:
         conn.close()
+
+
+@app.post("/api/admin/orders/{order_id}/delete")
+async def admin_delete_order(order_id: int, secret: str = Form(...), adjust_coloc: str = Form("false")):
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Code secret invalide.")
+
+    should_adjust = adjust_coloc.lower() in ("true", "1", "yes")
+
+    conn = Database.get_conn()
+    try:
+        order = Database.fetch_one(conn, "SELECT * FROM orders WHERE id = ?", (order_id,))
+        if not order:
+            raise HTTPException(status_code=404, detail="Commande introuvable.")
+
+        if should_adjust and order["status"] == "approved":
+            coloc = Database.fetch_one(conn, "SELECT id, score FROM colocations WHERE LOWER(name) = LOWER(?)", (order["coloc_name"],))
+            if coloc:
+                new_score = max(0, coloc["score"] - order["total_slices"])
+                Database.execute(conn, "UPDATE colocations SET score = ? WHERE id = ?", (new_score, coloc["id"]))
+
+        Database.execute(conn, "DELETE FROM orders WHERE id = ?", (order_id,))
+        conn.commit()
+        return {"success": True, "message": f"Commande #{order_id} supprimée définitivement."}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/sync-scores")
+async def admin_sync_scores(secret: str = Form(...)):
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Code secret invalide.")
+
+    conn = Database.get_conn()
+    try:
+        # Reset all coloc scores based on currently approved orders
+        Database.execute(conn, "UPDATE colocations SET score = 0")
+        approved_sums = Database.fetch_all(conn, """
+            SELECT coloc_name, SUM(total_slices) as sum_slices
+            FROM orders
+            WHERE status = 'approved'
+            GROUP BY coloc_name
+        """)
+        for row in approved_sums:
+            Database.execute(conn, "UPDATE colocations SET score = ? WHERE LOWER(name) = LOWER(?)",
+                             (row["sum_slices"], row["coloc_name"]))
+        conn.commit()
+        return {"success": True, "message": "Tous les scores ont été synchronisés avec les commandes validées !"}
+    finally:
+        conn.close()
+
 
 
 if __name__ == "__main__":

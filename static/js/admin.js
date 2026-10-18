@@ -2,11 +2,13 @@ let currentSecret = localStorage.getItem('cheesecake_admin_secret') || '';
 let currentFilter = 'pending';
 let allOrders = [];
 let allColocs = [];
+let autoRefreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   if (currentSecret) {
     document.getElementById('secretInput').value = currentSecret;
     loadDashboard();
+    startAutoRefresh();
   }
 
   document.getElementById('authForm').addEventListener('submit', (e) => {
@@ -14,23 +16,36 @@ document.addEventListener('DOMContentLoaded', () => {
     currentSecret = document.getElementById('secretInput').value.trim();
     localStorage.setItem('cheesecake_admin_secret', currentSecret);
     loadDashboard();
+    startAutoRefresh();
   });
 });
 
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (!currentSecret) return;
+    // Don't auto-refresh if user has focus on any input
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+    loadDashboard(true);
+  }, 8000);
+}
+
 function logoutAdmin() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   localStorage.removeItem('cheesecake_admin_secret');
   currentSecret = '';
   document.getElementById('authSection').style.display = 'block';
   document.getElementById('dashboardSection').style.display = 'none';
 }
 
-async function loadDashboard() {
+async function loadDashboard(isSilent = false) {
   if (!currentSecret) return;
 
   try {
     const res = await fetch(`/api/admin/orders?secret=${encodeURIComponent(currentSecret)}`);
     if (res.status === 403) {
-      showToast("Code secret incorrect !", "error");
+      if (!isSilent) showToast("Code secret incorrect !", "error");
       localStorage.removeItem('cheesecake_admin_secret');
       return;
     }
@@ -52,8 +67,13 @@ async function loadDashboard() {
     renderOrders();
     renderColocs();
 
+    if (!isSilent && window._showManualRefreshToast) {
+      showToast("Données actualisées 🔄", "success");
+      window._showManualRefreshToast = false;
+    }
+
   } catch (err) {
-    showToast(err.message, "error");
+    if (!isSilent) showToast(err.message, "error");
   }
 }
 
@@ -94,6 +114,7 @@ function renderOrders() {
     else if (o.status === 'approved') statusBadge = `<span class="status-badge status-approved">Validée</span>`;
     else statusBadge = `<span class="status-badge status-rejected">Refusée</span>`;
 
+    const isApproved = o.status === 'approved';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>#${o.id}</td>
@@ -106,11 +127,12 @@ function renderOrders() {
       <td>
         <div class="action-group">
           ${o.status !== 'approved' ? `
-            <button class="btn-action btn-validate" onclick="validateOrder(${o.id})">✅ Valider</button>
+            <button class="btn-action btn-validate" onclick="validateOrder(${o.id})" title="Valider la commande">✅ Valider</button>
           ` : ''}
           ${o.status !== 'rejected' ? `
-            <button class="btn-action btn-reject" onclick="rejectOrder(${o.id})">❌ Refuser</button>
+            <button class="btn-action btn-reject" onclick="rejectOrder(${o.id})" title="Refuser / annuler">❌ Refuser</button>
           ` : ''}
+          <button class="btn-action btn-delete" onclick="deleteOrder(${o.id}, '${o.coloc_name.replace(/'/g, "\\'")}', ${isApproved})" title="Supprimer définitivement (ex: doublon)">🗑️</button>
         </div>
       </td>
     `;
@@ -157,6 +179,64 @@ async function rejectOrder(orderId) {
     showToast(err.message, "error");
   }
 }
+
+async function deleteOrder(orderId, colocName, isApproved) {
+  if (!confirm(`Voulez-vous supprimer définitivement la commande #${orderId} ?\n(Cette action est irréversible, utile en cas de doublon)`)) {
+    return;
+  }
+
+  let adjustColoc = false;
+  if (isApproved) {
+    adjustColoc = confirm(
+      `La commande #${orderId} était validée pour la coloc "${colocName}".\n\n` +
+      `Voulez-vous aussi déduire ses parts du score de la coloc ?\n` +
+      `• Cliquer sur OK : déduit les parts de la coloc\n` +
+      `• Cliquer sur Annuler : supprime la commande SANS toucher au score de la coloc`
+    );
+  }
+
+  const formData = new FormData();
+  formData.append('secret', currentSecret);
+  formData.append('adjust_coloc', adjustColoc ? 'true' : 'false');
+
+  try {
+    const res = await fetch(`/api/admin/orders/${orderId}/delete`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+
+    showToast(data.message, "success");
+    loadDashboard();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function syncColocScores() {
+  if (!confirm("Voulez-vous recalculer et synchroniser automatiquement tous les scores de colocation selon les commandes validées ?")) {
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('secret', currentSecret);
+
+  try {
+    const res = await fetch('/api/admin/sync-scores', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+
+    showToast(data.message, "success");
+    loadDashboard();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
 
 function renderColocs() {
   const tbody = document.getElementById('colocsTableBody');
