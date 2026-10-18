@@ -212,7 +212,6 @@ function renderLeaderboard(colocs) {
           <span class="coloc-rank">${rankEmoji}</span>
           <div>
             <div class="coloc-info-name">${coloc.name}</div>
-            ${coloc.address ? `<div class="coloc-info-address">${coloc.address}</div>` : ''}
           </div>
         </div>
         <div class="coloc-right">
