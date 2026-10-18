@@ -18,8 +18,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "cheesecakes.db")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "NEPAL2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-
 app = FastAPI(title="Semaine du Cheesecake Battle")
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/js/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
@@ -273,8 +281,8 @@ async def create_order(order: OrderCreate):
     clean_location = order.delivery_location.strip()
     clean_time = order.delivery_time.strip()
     clean_phone = (order.phone or "").strip()
-    if not clean_coloc or not clean_location or not clean_time or not clean_phone:
-        raise HTTPException(status_code=400, detail="Veuillez remplir tous les champs (Colocation, Téléphone, Lieu de livraison, Horaire).")
+    if not clean_coloc or not clean_location or not clean_time:
+        raise HTTPException(status_code=400, detail="Veuillez remplir les informations obligatoires (Colocation, Lieu de livraison, Horaire).")
 
     conn = Database.get_conn()
     try:
