@@ -95,7 +95,7 @@ function renderOrders() {
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Aucune commande dans cette catégorie.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Aucune commande dans cette catégorie.</td></tr>`;
     return;
   }
 
@@ -114,16 +114,11 @@ function renderOrders() {
     else if (o.status === 'approved') statusBadge = `<span class="status-badge status-approved">Validée</span>`;
     else statusBadge = `<span class="status-badge status-rejected">Refusée</span>`;
 
-    const phoneDisplay = o.phone
-      ? `<a href="tel:${o.phone}" style="color: var(--accent-gold); font-weight: 700; text-decoration: none;" title="Appeler le client">📞 ${o.phone}</a>`
-      : `<span style="color: var(--text-muted); font-size: 0.85rem;">Non renseigné</span>`;
-
     const isApproved = o.status === 'approved';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>#${o.id}</td>
       <td><strong style="font-size: 1.05rem; color: #fff;">${o.coloc_name}</strong></td>
-      <td>${phoneDisplay}</td>
       <td><strong>📍 ${o.room_or_address || 'Non précisé'}</strong></td>
       <td><span style="color: var(--accent-gold); font-weight: 700;">🕒 ${o.notes || 'Dès que possible'}</span></td>
       <td>${itemsSummary}</td>
@@ -256,11 +251,33 @@ function renderColocs() {
         <div style="display: flex; gap: 8px; align-items: center;">
           <input type="number" id="colocScore_${coloc.id}" value="${coloc.score}" min="0" class="form-control" style="width: 80px; padding: 6px 10px;">
           <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveColocScore(${coloc.id})">Enregistrer</button>
+          <button class="btn btn-action btn-delete" style="padding: 6px 10px;" onclick="deleteColoc(${coloc.id}, '${coloc.name.replace(/'/g, "\\'")}')">🗑️</button>
         </div>
       </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function deleteColoc(colocId, name) {
+  if (!confirm(`Voulez-vous vraiment supprimer la colocation "${name}" ?`)) return;
+
+  const formData = new FormData();
+  formData.append('secret', currentSecret);
+
+  try {
+    const res = await fetch(`/api/admin/colocations/${colocId}/delete`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur de suppression");
+
+    showToast(data.message, "success");
+    loadDashboard();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 async function saveColocScore(colocId) {

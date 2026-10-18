@@ -20,15 +20,6 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "NEPAL2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 app = FastAPI(title="Semaine du Cheesecake Battle")
 
-@app.middleware("http")
-async def add_no_cache_headers(request: Request, call_next):
-    response = await call_next(request)
-    if request.url.path.startswith("/static/js/"):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-    return response
-
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
@@ -144,6 +135,9 @@ def init_db():
                 """, initial_flavors)
                 # Cleanup duplicate order 10 if present
                 cur.execute("DELETE FROM orders WHERE id = 10 AND coloc_name = '4B508'")
+                # Cleanup test colocations and test orders
+                cur.execute("DELETE FROM colocations WHERE name IN ('alfnapeff', 'apdk,a', 'TEST_WEI')")
+                cur.execute("DELETE FROM orders WHERE coloc_name IN ('alfnapeff', 'apdk,a', 'TEST_WEI')")
             conn.commit()
         else:
             os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
@@ -472,6 +466,23 @@ async def admin_delete_order(order_id: int, secret: str = Form(...), adjust_colo
         Database.execute(conn, "DELETE FROM orders WHERE id = ?", (order_id,))
         conn.commit()
         return {"success": True, "message": f"Commande #{order_id} supprimée définitivement."}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/colocations/{coloc_id}/delete")
+async def admin_delete_coloc(coloc_id: int, secret: str = Form(...)):
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Code secret invalide.")
+
+    conn = Database.get_conn()
+    try:
+        coloc = Database.fetch_one(conn, "SELECT name FROM colocations WHERE id = ?", (coloc_id,))
+        if coloc:
+            Database.execute(conn, "DELETE FROM orders WHERE LOWER(coloc_name) = LOWER(?)", (coloc["name"],))
+        Database.execute(conn, "DELETE FROM colocations WHERE id = ?", (coloc_id,))
+        conn.commit()
+        return {"success": True, "message": "Colocation et ses commandes supprimées avec succès."}
     finally:
         conn.close()
 
