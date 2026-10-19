@@ -115,6 +115,8 @@ function initForm() {
     e.preventDefault();
 
     const coloc_name = document.getElementById('colocNameInput').value.trim();
+    const phoneInput = document.getElementById('phoneInput');
+    const phone = phoneInput ? phoneInput.value.trim() : '';
     const delivery_location = document.getElementById('locationInput').value.trim();
     const delivery_time = document.getElementById('timeInput').value.trim();
 
@@ -133,6 +135,7 @@ function initForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coloc_name,
+          phone,
           delivery_location,
           delivery_time,
           items: cart

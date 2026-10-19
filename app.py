@@ -20,6 +20,15 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "NEPAL2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 app = FastAPI(title="Semaine du Cheesecake Battle")
 
+@app.middleware("http")
+async def add_cache_control_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/js/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
