@@ -137,6 +137,7 @@ def init_db():
                 initial_flavors = [
                     ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", True),
                     ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", True),
+                    ("Part de Brownie Maison", "part_brownie", "Part généreuse de brownie artisanal au chocolat fondant fait maison par l'asso. 2,00 € (+1 part au classement).", 2.00, "Gourmandise • 2,00€", "/static/images/brownie.jpg", True),
                 ]
                 cur.executemany("""
                     INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
@@ -192,6 +193,7 @@ def init_db():
             initial_flavors = [
                 ("Pot Nature Spéculoos", "nature_speculoos", "Cheesecake artisanal fait maison par l'asso dans son pot en verre, crème fondante et base croustillante pur Spéculoos. 2,50 € (dont 0,50 € de caution pot remboursable).", 2.50, "Pot Classique • 2,50€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
                 ("Pot Nature Spéculoos + Option Coulis", "speculoos_coulis", "Le pot Nature Spéculoos avec un généreux coulis fruité fait maison (+0,30€). 2,80 € (dont 0,50 € de caution pot remboursable).", 2.80, "Option Coulis • 2,80€ (dont 0,50€ caution)", "/static/images/cheesecake_nature_speculoos.jpg", 1),
+                ("Part de Brownie Maison", "part_brownie", "Part généreuse de brownie artisanal au chocolat fondant fait maison par l'asso. 2,00 € (+1 part au classement).", 2.00, "Gourmandise • 2,00€", "/static/images/brownie.jpg", 1),
             ]
             cur.executemany("""
                 INSERT INTO flavors (name, slug, description, price, badge, image_url, available)
@@ -291,6 +293,11 @@ async def create_order(order: OrderCreate):
     try:
         flavor_rows = Database.fetch_all(conn, "SELECT name, price FROM flavors")
         price_map = {row["name"]: row["price"] for row in flavor_rows}
+        price_map.setdefault("Part de Brownie Maison", 2.00)
+        price_map.setdefault("Part de Brownie", 2.00)
+        price_map.setdefault("Brownie Maison", 2.00)
+        price_map.setdefault("Brownie", 2.00)
+        price_map.setdefault("Brownies", 2.00)
 
         total_slices = 0
         total_price = 0.0
@@ -302,13 +309,18 @@ async def create_order(order: OrderCreate):
             except ValueError:
                 continue
             if qty_int > 0:
-                unit_price = price_map.get(flavor_name, 2.50)
+                unit_price = price_map.get(flavor_name)
+                if unit_price is None:
+                    if "brownie" in flavor_name.lower():
+                        unit_price = 2.00
+                    else:
+                        unit_price = 2.50
                 sanitized_items[flavor_name] = qty_int
                 total_slices += qty_int
                 total_price += unit_price * qty_int
 
         if total_slices <= 0:
-            raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un pot de cheesecake.")
+            raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un article (cheesecake ou brownie).")
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

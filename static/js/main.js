@@ -67,7 +67,7 @@ function openOrderModal() {
   }
 
   if (totalCount === 0) {
-    showToast("Veuillez choisir au moins 1 part de cheesecake d'abord !", "error");
+    showToast("Veuillez choisir au moins 1 article (cheesecake ou brownie) d'abord !", "error");
     return;
   }
 
